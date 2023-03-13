@@ -1,5 +1,4 @@
-//import 'dart:ffi';
-
+//import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
@@ -12,6 +11,8 @@ class Calendar extends StatefulWidget {
 
 class _CalendarState extends State<Calendar> {
   List<Appointment> _appointments = <Appointment>[];
+  bool problem = false;
+  String answer = '';
 
   void _handleTapDate(DateTime date) {
     List<Appointment> appointments = _appointments;
@@ -45,13 +46,10 @@ class _CalendarState extends State<Calendar> {
     appointments.sort((a, b) => a.startTime.compareTo(b.startTime));
     DateTime previousDay = appointments[0].startTime;
     for (int i = 1; i < appointments.length; i++) {
-      // перебираем все элементы списка, в котором лежат даты этих дней
       if (appointments[i].startTime !=
           previousDay.add(const Duration(days: 1))) {
-        // это условие разделяет месячные одного месяца от другого
         if (number > 1) {
-          // number - сколько раз(не дней) они были
-          if (previousBreak - //  если в этот раз они пришли намного раньше/позже, чем в прошлый
+          if (previousBreak -
                       (appointments[i]
                           .startTime
                           .difference(previousDay)
@@ -76,19 +74,19 @@ class _CalendarState extends State<Calendar> {
       }
       previousDay = appointments[i].startTime;
     }
-    int averageBreak = (allBreaks / (number - 1))
-        .round(); // средний перерыв = среднее  арифметическое между всеми перерывами
-    int averageDuration =
-        (duration / number + 1).round(); // средняя продолжительность
-    if (averageBreak > 40 || averageBreak < 21) {
-      // проверяем, если перерывы между месячными длятся правильное количество времени
-      norm = false;
-      reason = 'break lasts abnormally';
-    }
-    if (averageDuration > 5 || averageDuration < 2) {
-      // проверяем, если сами месячные длятся правильное количество времени
-      norm = false;
-      reason = 'average duration is abnormal';
+    int averageBreak = 28;
+    int averageDuration = 4;
+    if (number > 1) {
+      averageBreak = (allBreaks / (number - 1)).round();
+      averageDuration = (duration / number + 1).round();
+      if (averageBreak > 40 || averageBreak < 21) {
+        norm = false;
+        reason = 'breaks last abnormally';
+      }
+      if (averageDuration > 5 || averageDuration < 2) {
+        norm = false;
+        reason = 'average duration is abnormal';
+      }
     }
     var start = appointments[appointments.length - 1]
         .startTime
@@ -97,11 +95,14 @@ class _CalendarState extends State<Calendar> {
         .startTime
         .add(Duration(days: (averageBreak + averageDuration)));
     setState(() {
-      // добавляем "предсказание"
       _appointments.add(Appointment(
           startTime: start,
           endTime: end,
-          color: const Color.fromARGB(132, 174, 0, 255)));
+          color: Color.fromARGB(132, 174, 0, 255)));
+    });
+    setState(() {
+      problem = !norm;
+      answer = reason;
     });
     print(
         'norm: $norm,  duration: $averageDuration,  break: $averageBreak, reason: $reason');
@@ -113,6 +114,33 @@ class _CalendarState extends State<Calendar> {
       floatingActionButton: ElevatedButton(
           onPressed: () {
             healthy(_appointments);
+            if (problem) {
+              Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    opaque: false,
+                    pageBuilder: (BuildContext context, _, __) {
+                      return Center(
+                          child: Card(
+                        child: InkWell(
+                          splashColor: Color.fromARGB(149, 223, 64, 251),
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
+                          child: SizedBox(
+                              width: 200,
+                              height: 100,
+                              child: Padding(
+                                  padding: EdgeInsets.all(10),
+                                  child: Center(
+                                    child: Text(
+                                        'It looks your $answer. Consultation with our specialists is recommended.'),
+                                  ))),
+                        ),
+                      ));
+                    },
+                  ));
+            }
           },
           child: const Text('Check')),
       body: SafeArea(
